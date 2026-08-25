@@ -1,10 +1,142 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>eFootball Tournament</title><style>
-:root{--bg:#07111f;--card:#0d1b2d;--line:#20344d;--text:#f5f7fb;--muted:#9eb0c7;--a:#25d366;--d:#ff5d6c}*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#06101d,#0b1830);color:var(--text);font-family:Arial,sans-serif}header{position:sticky;top:0;z-index:5;padding:16px 6%;display:flex;justify-content:space-between;background:#07111fee;border-bottom:1px solid var(--line)}nav a{color:var(--muted);text-decoration:none;margin-left:15px;font-size:14px}.logo{font-weight:900}.logo span{color:var(--a)}main{max-width:1050px;margin:auto;padding:30px 5%}.hero{text-align:center;padding:60px 0}.hero h1{font-size:clamp(38px,7vw,70px);line-height:1;margin:15px 0}.hero p,.muted{color:var(--muted)}section{margin:30px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:15px}.card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:20px}input{width:100%;padding:12px;margin:6px 0 12px;border-radius:8px;border:1px solid var(--line);background:#081525;color:white}button,.btn{padding:11px 16px;border:0;border-radius:8px;background:var(--a);color:#031309;font-weight:bold;cursor:pointer;text-decoration:none;display:inline-block}.secondary{background:transparent;color:white;border:1px solid var(--line)}.hidden{display:none}.msg{padding:10px;border-radius:8px;margin-top:8px}.ok{background:#103a27}.err{background:#3b1620}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:11px;border-bottom:1px solid var(--line);text-align:left}.table th{color:var(--muted);font-size:12px}.wrap{overflow:auto}footer{text-align:center;padding:30px;color:var(--muted);border-top:1px solid var(--line)}@media(max-width:650px){nav{display:none}}
-</style></head><body><header><div class="logo">⚽ <span>eFOOTBALL</span> CUP</div><nav><a href="#register">Register</a><a href="#matches">Matches</a><a href="#dashboard">Dashboard</a><a href="#admin">Admin</a></nav></header><main>
-<section class="hero"><h1>eFOOTBALL<br>TOURNAMENT</h1><p>Register yourself, see your match and submit your score. Admin can run a random draw.</p><a class="btn" href="#register">Register</a></section>
-<section id="register"><h2>Player Registration</h2><div class="card"><form id="reg"><div class="grid"><div>Name<input name="name" required></div><div>Email<input name="email" type="email" required></div><div>eFootball ID<input name="eid" required></div><div>Phone<input name="phone"></div><div>Password<input name="password" type="password" minlength="6" required></div></div><button>Register</button><div id="regMsg"></div></form></div></section>
-<section id="login"><h2>Player Login</h2><div class="card"><form id="loginForm"><div class="grid"><div>Email<input name="email" type="email" required></div><div>Password<input name="password" type="password" required></div></div><button>Login</button> <button type="button" class="secondary" onclick="logout()">Logout</button><div id="loginMsg"></div></form></div></section>
-<section id="dashboard" class="hidden"><h2>My Dashboard</h2><p id="welcome" class="muted"></p><div class="card"><h3>My Matches</h3><div id="myMatches" class="wrap">Loading...</div></div><div class="card" style="margin-top:15px"><h3>Submit Score</h3><form id="score"><div class="grid"><div>Match ID<input name="matchId" placeholder="R1-001" required></div><div>Your score<input name="myScore" type="number" min="0" required></div><div>Opponent score<input name="oppScore" type="number" min="0" required></div></div><button>Submit Score</button><div id="scoreMsg"></div></form></div></section>
-<section id="matches"><h2>Fixtures & Results</h2><div class="card wrap" id="allMatches">Loading...</div></section>
-<section id="admin"><h2>Admin</h2><div class="card"><form id="adminLogin"><input id="adminPassword" type="password" placeholder="Admin password" required><button>Admin Login</button><div id="adminMsg"></div></form></div><div id="adminArea" class="hidden"><div class="grid" style="margin-top:15px"><div class="card"><h3>Random Draw</h3><p class="muted">Pairs all registered players randomly and replaces existing matches.</p><button onclick="draw()">Run Random Draw</button><div id="drawMsg"></div><div id="drawResult"></div></div><div class="card"><h3>Create Match</h3><form id="create"><input name="matchId" placeholder="M001" required><input name="p1" placeholder="Player 1 email" required><input name="p2" placeholder="Player 2 email" required><button>Create Match</button><div id="createMsg"></div></form></div></div><div class="card" style="margin-top:15px"><h3>Players</h3><div id="players" class="wrap">Loading...</div></div></div></section></main><footer>Free GitHub Pages + Google Sheets backend</footer>
-<script>const API_URL="PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";let token=localStorage.efToken||"",admin=localStorage.efAdmin||"";async function api(action,d={}){if(API_URL.startsWith("PASTE_"))throw Error("Backend URL not configured yet.");d.action=action;let b=new URLSearchParams;Object.entries(d).forEach(([k,v])=>b.append(k,v??""));let r=await fetch(API_URL,{method:"POST",body:b});return r.json()}function msg(id,t,ok){document.getElementById(id).innerHTML='<div class="msg '+(ok?'ok':'err')+'">'+t+'</div>'}function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}function table(a){let h='<table class="table"><tr><th>ID</th><th>Player 1</th><th>Score</th><th>Player 2</th><th>Status</th></tr>';a.forEach(x=>h+=`<tr><td>${esc(x.id)}</td><td>${esc(x.p1)}</td><td>${esc(x.s1)} - ${esc(x.s2)}</td><td>${esc(x.p2)}</td><td>${esc(x.status)}</td></tr>`);return h+'</table>'}async function loadMatches(){try{let r=await api('matches');document.getElementById('allMatches').innerHTML=r.matches?.length?table(r.matches):'No matches yet.'}catch(e){document.getElementById('allMatches').textContent=e.message}}async function dash(){if(!token)return;document.getElementById('dashboard').classList.remove('hidden');let r=await api('me',{token});if(!r.ok)return logout();document.getElementById('welcome').textContent='Welcome, '+r.player.name+' • '+r.player.eid;let m=await api('myMatches',{token});document.getElementById('myMatches').innerHTML=m.matches?.length?table(m.matches):'No matches yet.'}document.getElementById('reg').onsubmit=async e=>{e.preventDefault();try{let r=await api('register',Object.fromEntries(new FormData(e.target)));msg('regMsg',r.message,r.ok);if(r.ok)e.target.reset()}catch(x){msg('regMsg',x.message,false)}};document.getElementById('loginForm').onsubmit=async e=>{e.preventDefault();try{let r=await api('login',Object.fromEntries(new FormData(e.target)));msg('loginMsg',r.message,r.ok);if(r.ok){token=r.token;localStorage.efToken=token;dash()}}catch(x){msg('loginMsg',x.message,false)}};function logout(){token='';localStorage.removeItem('efToken');document.getElementById('dashboard').classList.add('hidden');msg('loginMsg','Logged out.',true)}document.getElementById('score').onsubmit=async e=>{e.preventDefault();try{let d=Object.fromEntries(new FormData(e.target));d.token=token;let r=await api('submitScore',d);msg('scoreMsg',r.message,r.ok);if(r.ok){e.target.reset();dash();loadMatches()}}catch(x){msg('scoreMsg',x.message,false)}};document.getElementById('adminLogin').onsubmit=async e=>{e.preventDefault();try{let r=await api('adminLogin',{password:document.getElementById('adminPassword').value});msg('adminMsg',r.message,r.ok);if(r.ok){admin=r.token;localStorage.efAdmin=admin;document.getElementById('adminArea').classList.remove('hidden');loadAdmin()}}catch(x){msg('adminMsg',x.message,false)}};async function loadAdmin(){let r=await api('players',{adminToken:admin});let h='<table class="table"><tr><th>Name</th><th>Email</th><th>eFootball ID</th></tr>';(r.players||[]).forEach(p=>h+=`<tr><td>${esc(p.name)}</td><td>${esc(p.email)}</td><td>${esc(p.eid)}</td></tr>`);document.getElementById('players').innerHTML=h+'</table>'}document.getElementById('create').onsubmit=async e=>{e.preventDefault();let d=Object.fromEntries(new FormData(e.target));d.adminToken=admin;let r=await api('createMatch',d);msg('createMsg',r.message,r.ok);if(r.ok){e.target.reset();loadMatches()}};async function draw(){try{let r=await api('randomDraw',{adminToken:admin});msg('drawMsg',r.message,r.ok);if(r.ok){document.getElementById('drawResult').innerHTML=r.pairs.map((p,i)=>`<p><b>${i+1}.</b> ${esc(p[0])} vs ${esc(p[1])}</p>`).join('');loadMatches()}}catch(x){msg('drawMsg',x.message,false)}}loadMatches();dash();</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VANNARA eFootball Championship</title>
+<meta name="description" content="VANNARA eFootball Championship tournament portal">
+<style>
+:root{--bg:#050912;--panel:#0b1220;--panel2:#101a2c;--line:#1d2b42;--text:#f7f9fc;--muted:#91a0b6;--green:#38e07b;--gold:#f4c95d;--danger:#ff5f6d}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at 15% 0%,#123323 0,transparent 30%),radial-gradient(circle at 85% 10%,#1a1737 0,transparent 28%),var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+a{text-decoration:none;color:inherit}.container{width:min(1120px,92%);margin:auto}
+header{position:sticky;top:0;z-index:20;background:#050912d9;border-bottom:1px solid var(--line);backdrop-filter:blur(16px)}
+.nav{height:72px;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;gap:10px;align-items:center;font-weight:900;letter-spacing:.5px}.brand-mark{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(135deg,var(--green),#0e8d48);color:#031009}.brand span{color:var(--green)}
+nav{display:flex;gap:24px;color:var(--muted);font-size:14px}nav a:hover{color:#fff}
+.hero{padding:92px 0 65px;text-align:center}.pill{display:inline-flex;align-items:center;gap:8px;padding:8px 13px;border:1px solid #24583b;border-radius:999px;color:var(--green);font-size:12px;font-weight:800;background:#0a2015}
+.hero h1{font-size:clamp(44px,8vw,82px);line-height:.95;margin:20px 0 16px;letter-spacing:-3px}.hero h1 span{color:var(--green)}.hero p{max-width:680px;margin:0 auto 28px;color:var(--muted);font-size:17px;line-height:1.6}
+.btn{border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 19px;border-radius:11px;font-weight:850;background:var(--green);color:#031009}.btn.alt{background:transparent;border:1px solid var(--line);color:#fff}.btn.danger{background:var(--danger);color:#fff}
+section{padding:55px 0}.section-head{text-align:center;margin-bottom:28px}.section-head h2{margin:0 0 7px;font-size:32px}.section-head p{margin:0;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.stat,.card{background:linear-gradient(180deg,#0d1727,#09111e);border:1px solid var(--line);border-radius:17px}.stat{padding:22px}.stat b{font-size:30px;color:var(--green);display:block}.stat small{color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.card{padding:22px}.card h3{margin:0 0 9px}.muted{color:var(--muted)}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px;background:#09111c}.table{width:100%;border-collapse:collapse;min-width:650px}.table th,.table td{padding:15px;border-bottom:1px solid var(--line);text-align:left}.table th{color:#71829a;font-size:11px;text-transform:uppercase}.badge{padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800;background:#12263a;color:#a9bdd5}.live{color:var(--green);background:#0d2a1b}
+.bracket{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;overflow:auto}.round{min-width:230px}.round h3{font-size:12px;text-transform:uppercase;color:#71829a}.match{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin:18px 0}.team{display:flex;justify-content:space-between;padding:6px 0}.team+.team{border-top:1px solid var(--line)}
+.form{max-width:600px;margin:auto;background:var(--panel);border:1px solid var(--line);padding:25px;border-radius:18px}.form label{display:block;margin:13px 0 6px;font-size:13px;color:#b7c4d6}.form input,.form select{width:100%;padding:12px 13px;background:#07101d;border:1px solid var(--line);border-radius:10px;color:#fff;outline:none}.form input:focus{border-color:var(--green)}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.notice{margin-top:14px;padding:12px;border-radius:10px;background:#0e1b2b;color:var(--muted);font-size:13px}
+.admin{display:none}.admin.on{display:block}.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+footer{border-top:1px solid var(--line);padding:38px 0;text-align:center;color:#65758b}
+@media(max-width:800px){nav{display:none}.stats{grid-template-columns:1fr 1fr}.grid,.admin-grid{grid-template-columns:1fr}.bracket{grid-template-columns:1fr}.hero{padding-top:65px}.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="container nav">
+<a class="brand" href="#home"><div class="brand-mark">⚽</div><div>VANNARA <span>eFOOTBALL</span></div></a>
+<nav><a href="#home">Home</a><a href="#register">Register</a><a href="#matches">Matches</a><a href="#standings">Standings</a><a href="#draw">Draw</a><a href="#admin">Admin</a></nav>
+</div></header>
+
+<main>
+<section class="hero" id="home"><div class="container">
+<div class="pill">● SEASON 01 · ONLINE CHAMPIONSHIP</div>
+<h1>VANNARA<br><span>eFOOTBALL</span> CUP</h1>
+<p>The official tournament portal for registration, fixtures, results, standings and random draws. Built for competitive eFootball.</p>
+<a class="btn" href="#register">Join Tournament</a>
+<a class="btn alt" href="#matches">View Matches</a>
+</div></section>
+
+<section><div class="container stats">
+<div class="stat"><b id="statPlayers">0</b><small>Registered Players</small></div>
+<div class="stat"><b id="statMatches">0</b><small>Matches</small></div>
+<div class="stat"><b>৳1,600</b><small>Prize Pool</small></div>
+<div class="stat"><b id="statFinished">0</b><small>Finished Matches</small></div>
+</div></section>
+
+<section id="register"><div class="container">
+<div class="section-head"><h2>Player Registration</h2><p>Register your eFootball ID for the tournament.</p></div>
+<div class="form">
+<div class="row"><div><label>Player Name</label><input id="regName" placeholder="Your name"></div><div><label>eFootball ID</label><input id="regId" placeholder="eFootball ID"></div></div>
+<label>WhatsApp / Contact</label><input id="regContact" placeholder="Contact number">
+<label>Team / Club Name</label><input id="regTeam" placeholder="Optional">
+<button class="btn" style="width:100%;margin-top:18px" onclick="registerPlayer()">Register Now</button>
+<div class="notice" id="regMsg">Registration data is stored in this browser demo. Connect Google Sheets for shared online data.</div>
+</div></div></section>
+
+<section id="matches"><div class="container">
+<div class="section-head"><h2>Fixtures & Results</h2><p>Players can submit their match score.</p></div>
+<div class="table-wrap"><table class="table"><thead><tr><th>Match</th><th>Player A</th><th>Score</th><th>Player B</th><th>Status</th><th>Action</th></tr></thead><tbody id="matchBody"></tbody></table></div>
+</div></section>
+
+<section id="standings"><div class="container">
+<div class="section-head"><h2>Standings</h2><p>Automatic points table from submitted results.</p></div>
+<div class="table-wrap"><table class="table"><thead><tr><th>Pos</th><th>Player</th><th>P</th><th>W</th><th>D</th><th>L</th><th>Pts</th></tr></thead><tbody id="standBody"></tbody></table></div>
+</div></section>
+
+<section id="draw"><div class="container">
+<div class="section-head"><h2>Random Draw</h2><p>Admin can shuffle registered players into matchups.</p></div>
+<div class="card" style="max-width:760px;margin:auto;text-align:center">
+<button class="btn" onclick="randomDraw()">🎲 Generate Random Draw</button>
+<div id="drawResult" style="margin-top:20px;text-align:left"></div>
+</div></div></section>
+
+<section id="admin"><div class="container">
+<div class="section-head"><h2>Admin Control</h2><p>Private tournament management.</p></div>
+<div class="form">
+<div id="adminLoginBox">
+<label>Admin Password</label><input id="adminPass" type="password" placeholder="Enter password">
+<button class="btn" onclick="adminLogin()">Login</button>
+<div class="notice">Default demo password: <b>12345</b></div>
+</div>
+<div id="adminPanel" class="admin">
+<div class="admin-grid">
+<div class="card"><h3>🎲 Random Draw</h3><p class="muted">Shuffle all registered players into pairings.</p><button class="btn" onclick="randomDraw()">Generate Draw</button></div>
+<div class="card"><h3>🧹 Reset Demo Data</h3><p class="muted">Clear local registration, matches and results.</p><button class="btn danger" onclick="resetData()">Reset</button></div>
+</div>
+<div class="notice" style="margin-top:16px">For real multi-device tournaments, connect the included Google Apps Script backend. The static GitHub version cannot securely share database data by itself.</div>
+<button class="btn alt" style="margin-top:15px" onclick="adminLogout()">Logout</button>
+</div>
+</div></div></section>
+</main>
+
+<footer>© 2026 VANNARA eFootball Cup · Tournament Management Portal</footer>
+
+<script>
+const ADMIN_PASSWORD="12345";
+let players=JSON.parse(localStorage.getItem("ef_players")||"[]");
+let matches=JSON.parse(localStorage.getItem("ef_matches")||"[]");
+
+function save(){localStorage.setItem("ef_players",JSON.stringify(players));localStorage.setItem("ef_matches",JSON.stringify(matches));render();}
+function registerPlayer(){
+ const name=document.getElementById("regName").value.trim(), id=document.getElementById("regId").value.trim(), contact=document.getElementById("regContact").value.trim(), team=document.getElementById("regTeam").value.trim();
+ if(!name||!id){document.getElementById("regMsg").textContent="❌ Player name and eFootball ID are required.";return}
+ if(players.some(p=>p.id.toLowerCase()===id.toLowerCase())){document.getElementById("regMsg").textContent="❌ This eFootball ID is already registered.";return}
+ players.push({name,id,contact,team}); save();
+ document.getElementById("regMsg").textContent="✅ Registration successful!";
+ ["regName","regId","regContact","regTeam"].forEach(x=>document.getElementById(x).value="");
+}
+function randomDraw(){
+ if(players.length<2){document.getElementById("drawResult").innerHTML="<div class='notice'>Register at least 2 players first.</div>";return}
+ let a=[...players].sort(()=>Math.random()-.5), out="<h3>Draw Results</h3>";
+ matches=[]; for(let i=0;i<a.length;i+=2){let b=a[i+1]; matches.push({a:a[i].name,b:b?b.name:"BYE",sa:null,sb:null,status:b?"Upcoming":"BYE"});out+=`<div class="match"><div class="team"><b>${a[i].name}</b><span>${b?"":"BYE"}</span></div>${b?`<div class="team"><b>${b.name}</b></div>`:""}</div>`}
+ document.getElementById("drawResult").innerHTML=out; save();
+}
+function submitScore(i){
+ let a=prompt("Score for "+matches[i].a), b=prompt("Score for "+matches[i].b);
+ if(a===null||b===null)return;
+ a=Number(a);b=Number(b);
+ if(!Number.isInteger(a)||!Number.isInteger(b)||a<0||b<0){alert("Enter valid scores.");return}
+ matches[i].sa=a;matches[i].sb=b;matches[i].status="Finished";save();
+}
+function render(){
+ document.getElementById("statPlayers").textContent=players.length;
+ document.getElementById("statMatches").textContent=matches.length;
+ document.getElementById("statFinished").textContent=matches.filter(m=>m.status==="Finished").length;
+ document.getElementById("matchBody").innerHTML=matches.length?matches.map((m,i)=>`<tr><td>#${String(i+1).padStart(2,"0")}</td><td>${m.a}</td><td><b>${m.sa??"-"} : ${m.sb??"-"}</b></td><td>${m.b}</td><td><span class="badge ${m.status==="Finished"?"live":""}">${m.status}</span></td><td>${m.status==="Finished"?"—":m.status==="BYE"?"—":`<button class="btn" style="padding:8px 11px;font-size:12px" onclick="submitScore(${i})">Submit Score</button>`}</td></tr>`).join(""):"<tr><td colspan='6'>No matches yet. Generate a random draw.</td></tr>";
+ let s={};players.forEach(p=>s[p.name]={p:0,w:0,d:0,l:0,pts:0});
+ matches.forEach(m=>{if(m.status!=="Finished"||!(m.a in s)||!(m.b in s))return;s[m.a].p++;s[m.b].p++;if(m.sa>m.sb){s[m.a].w++;s[m.a].pts+=3;s[m.b].l++}else if(m.sb>m.sa){s[m.b].w++;s[m.b].pts+=3;s[m.a].l++}else{s[m.a].d++;s[m.b].d++;s[m.a].pts++;s[m.b].pts++}});
+ let arr=Object.entries(s).sort((x,y)=>y[1].pts-x[1].pts);
+ document.getElementById("standBody").innerHTML=arr.length?arr.map((x,i)=>`<tr><td>${i+1}</td><td>${x[0]}</td><td>${x[1].p}</td><td>${x[1].w}</td><td>${x[1].d}</td><td>${x[1].l}</td><td><b>${x[1].pts}</b></td></tr>`).join(""):"<tr><td colspan='7'>No players registered.</td></tr>";
+}
+function adminLogin(){if(document.getElementById("adminPass").value===ADMIN_PASSWORD){document.getElementById("adminLoginBox").style.display="none";document.getElementById("adminPanel").classList.add("on");sessionStorage.admin="1"}else alert("Wrong admin password.");}
+function adminLogout(){sessionStorage.removeItem("admin");location.reload()}
+function resetData(){if(confirm("Reset all local tournament data?")){localStorage.clear();location.reload()}}
+if(sessionStorage.admin==="1"){document.getElementById("adminLoginBox").style.display="none";document.getElementById("adminPanel").classList.add("on")}
+render();
+</script>
+</body></html>
